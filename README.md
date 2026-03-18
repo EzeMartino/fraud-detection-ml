@@ -64,17 +64,24 @@ Primary evaluation will emphasize:
 Accuracy will be treated as a secondary reference only, since it is misleading under extreme imbalance.
 
 
-## How to Run
+## Setup
 
-#### Install dependencies
+### Create virtual environment
+
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+```
+### Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
-#### Run data profiling
+### Run data profiling
 ```bash
 python -m src.data.load_and_profile
 ```
-#### Run tests
+### Run tests
 ```bash
 pytest
 ```
