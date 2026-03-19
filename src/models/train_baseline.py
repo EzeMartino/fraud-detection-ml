@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
+from src.models.evaluate import compute_threshold_metrics, save_threshold_metrics, save_top_k_metrics, top_k_metrics
 
 
 def load_data() -> pd.DataFrame:
@@ -61,21 +62,36 @@ def evaluate_model(model, X_test, y_test):
     pr_auc = average_precision_score(y_test, y_proba)
     roc_auc = roc_auc_score(y_test, y_proba)
 
+    threshold_df = compute_threshold_metrics(y_test, y_proba)
+    top_1pct = top_k_metrics(y_test, y_proba, top_fraction=0.001)
+    
     return {
         "pr_auc": pr_auc,
         "roc_auc": roc_auc,
+        "threshold_df": threshold_df,
+        "top_0_1pct": top_1pct
     }
 
 
 def save_results(results: dict):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    path = REPORTS_DIR / "baseline_metrics.json"
+    metrics_path = REPORTS_DIR / "baseline_metrics.json"
+    threshold_path = REPORTS_DIR / "baseline_threshold_metrics.csv"
+    top_k_path = REPORTS_DIR / "baseline_top_0_1pct.json"
 
-    with open(path, "w") as f:
-        json.dump(results, f, indent=2)
+    serializable_metrics = {
+        "pr_auc": results["pr_auc"],
+        "roc_auc": results["roc_auc"],
+    }
+    
+    with open(metrics_path, "w") as f:
+        json.dump(serializable_metrics, f, indent=2)
 
-    print(f"[OK] Saved results to {path}")
+    save_threshold_metrics(results["threshold_df"], threshold_path)
+    save_top_k_metrics(results["top_0_1pct"], top_k_path)
+    
+    print(f"[OK] Saved baseline metrics to {REPORTS_DIR}")
 
 
 def main():
@@ -98,8 +114,12 @@ def main():
     results = evaluate_model(model, X_test, y_test)
 
     print("Results:")
-    for k, v in results.items():
-        print(f"{k}: {v:.4f}")
+    print(f"PR-AUC: {results['pr_auc']:.4f}")
+    print(f"ROC-AUC: {results['roc_auc']:.4f}")
+    
+    print("Top 0.1% metrics:")
+    for k, v in results["top_0_1pct"].items():
+        print(f"{k}: {v}")
 
     save_results(results)
 
