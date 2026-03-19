@@ -2,7 +2,7 @@ import json
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.calibration import calibration_curve
+from sklearn.calibration import calibration_curve, CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import train_test_split
@@ -41,8 +41,15 @@ def train_model(X_train, y_train):
         class_weight="balanced",
         random_state=42,
     )
-    model.fit(X_train, y_train)
-    return model
+    
+    calibrated_model = CalibratedClassifierCV(
+        model, 
+        method="isotonic", 
+        cv=3)
+    
+    calibrated_model.fit(X_train, y_train)
+    
+    return calibrated_model
 
 
 def evaluate_model(model, X_test, y_test):
@@ -96,10 +103,10 @@ def main():
     X_train, X_test, y_train, y_test = split_data(X, y)
 
     print("Training Random Forest...")
-    model = train_model(X_train, y_train)
+    calibrated_model = train_model(X_train, y_train)
 
     print("Evaluating...")
-    results = evaluate_model(model, X_test, y_test)
+    results = evaluate_model(calibrated_model, X_test, y_test)
 
     print("\nResults:")
     for k, v in results.items():
