@@ -5,9 +5,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     roc_auc_score,
+    brier_score_loss
 )
+from sklearn.calibration import calibration_curve
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+
+import matplotlib.pyplot as plt
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
 from src.models.evaluate import compute_threshold_metrics, save_threshold_metrics, save_top_k_metrics, top_k_metrics
@@ -65,11 +69,27 @@ def evaluate_model(model, X_test, y_test):
     threshold_df = compute_threshold_metrics(y_test, y_proba)
     top_1pct = top_k_metrics(y_test, y_proba, top_fraction=0.001)
     
+    brier = brier_score_loss(y_test, y_proba)
+
+    prob_true, prob_pred = calibration_curve(y_test, y_proba, n_bins=10)
+    
+    plt.figure()
+    plt.plot(prob_pred, prob_true, marker="o")
+    plt.plot([0, 1], [0, 1], linestyle="--")
+
+    plt.title("Calibration Curve")
+    plt.xlabel("Predicted probability")
+    plt.ylabel("True probability")
+
+    plt.savefig("reports/calibration_curve_logistic.png")
+    plt.close()
+    
     return {
         "pr_auc": pr_auc,
         "roc_auc": roc_auc,
         "threshold_df": threshold_df,
-        "top_0_1pct": top_1pct
+        "top_0_1pct": top_1pct,
+        "brier_score": brier,
     }
 
 
@@ -116,6 +136,7 @@ def main():
     print("Results:")
     print(f"PR-AUC: {results['pr_auc']:.4f}")
     print(f"ROC-AUC: {results['roc_auc']:.4f}")
+    print(f"Brier Score: {results['brier_score']:.4f}")
     
     print("Top 0.1% metrics:")
     for k, v in results["top_0_1pct"].items():
