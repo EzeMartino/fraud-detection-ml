@@ -37,10 +37,11 @@ def split_data(X, y):
     )
 
 
-def train_model(X_train, y_train):
+def train_model(X_train, y_train, config):
     model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=None,
+        n_estimators=config["n_estimators"] or 200,
+        max_depth=config["max_depth"] or None,
+        min_samples_leaf=config["min_samples_leaf"] or 1,
         n_jobs=-1,
         class_weight="balanced",
         random_state=42,
@@ -56,23 +57,24 @@ def train_model(X_train, y_train):
     return calibrated_model
 
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model, X_test, y_test, save_plot=True, plot_name="calibration_curve_RF.png"):
     y_proba = model.predict_proba(X_test)[:, 1]
     
     brier = brier_score_loss(y_test, y_proba)
 
     prob_true, prob_pred = calibration_curve(y_test, y_proba, n_bins=10)
     
-    plt.figure()
-    plt.plot(prob_pred, prob_true, marker="o")
-    plt.plot([0, 1], [0, 1], linestyle="--")
+    if save_plot:
+        plt.figure()
+        plt.plot(prob_pred, prob_true, marker="o")
+        plt.plot([0, 1], [0, 1], linestyle="--")
 
-    plt.title("Calibration Curve")
-    plt.xlabel("Predicted probability")
-    plt.ylabel("True probability")
+        plt.title("Calibration Curve")
+        plt.xlabel("Predicted probability")
+        plt.ylabel("True probability")
 
-    plt.savefig("reports/calibration_curve_RF.png")
-    plt.close()
+        plt.savefig(f"reports/{plot_name}")
+        plt.close()
 
     return {
         "pr_auc": average_precision_score(y_test, y_proba),
@@ -85,10 +87,10 @@ def evaluate_model(model, X_test, y_test):
     }
 
 
-def save_results(results):
+def save_results(results, custom_path="rf_metrics.json"):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    path = REPORTS_DIR / "rf_FE_metrics.json"
+    path = REPORTS_DIR / custom_path
 
     with open(path, "w") as f:
         json.dump(results, f, indent=2)
