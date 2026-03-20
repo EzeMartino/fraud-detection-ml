@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
 from src.models.evaluate import compute_threshold_metrics, save_threshold_metrics, save_top_k_metrics, top_k_metrics
+from src.features.build_features import build_features
 
 
 def load_data() -> pd.DataFrame:
@@ -23,6 +24,8 @@ def load_data() -> pd.DataFrame:
 
 def preprocess(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     df = df.drop_duplicates()
+    
+    df = build_features(df)
     
     y = df[TARGET_COLUMN]
     X = df.drop(columns=[TARGET_COLUMN])
@@ -67,7 +70,11 @@ def evaluate_model(model, X_test, y_test):
     roc_auc = roc_auc_score(y_test, y_proba)
 
     threshold_df = compute_threshold_metrics(y_test, y_proba)
-    top_1pct = top_k_metrics(y_test, y_proba, top_fraction=0.001)
+    top_1pct = top_k_metrics(y_test, y_proba, top_fraction=0.01)
+    top_0_5pct = top_k_metrics(y_test, y_proba, top_fraction=0.005)
+    top_0_2pct = top_k_metrics(y_test, y_proba, top_fraction=0.002)
+    top_0_1pct = top_k_metrics(y_test, y_proba, top_fraction=0.001)
+    
     
     brier = brier_score_loss(y_test, y_proba)
 
@@ -88,7 +95,10 @@ def evaluate_model(model, X_test, y_test):
         "pr_auc": pr_auc,
         "roc_auc": roc_auc,
         "threshold_df": threshold_df,
-        "top_0_1pct": top_1pct,
+        "top_0_1pct": top_0_1pct,
+        "top_0_2pct": top_0_2pct,
+        "top_0_5pct": top_0_5pct,
+        "top_1pct": top_1pct,
         "brier_score": brier,
     }
 
@@ -96,9 +106,9 @@ def evaluate_model(model, X_test, y_test):
 def save_results(results: dict):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    metrics_path = REPORTS_DIR / "baseline_metrics.json"
-    threshold_path = REPORTS_DIR / "baseline_threshold_metrics.csv"
-    top_k_path = REPORTS_DIR / "baseline_top_0_1pct.json"
+    metrics_path = REPORTS_DIR / "feature_engineered_metrics.json"
+    threshold_path = REPORTS_DIR / "feature_engineered_threshold_metrics.csv"
+    top_k_path = REPORTS_DIR / "feature_engineered_top_k_metrics.json"
 
     serializable_metrics = {
         "pr_auc": results["pr_auc"],
@@ -109,9 +119,12 @@ def save_results(results: dict):
         json.dump(serializable_metrics, f, indent=2)
 
     save_threshold_metrics(results["threshold_df"], threshold_path)
-    save_top_k_metrics(results["top_0_1pct"], top_k_path)
+
+    del results["threshold_df"]  # Remove threshold_df from results to avoid JSON serialization issues
+
+    save_top_k_metrics(results, top_k_path)
     
-    print(f"[OK] Saved baseline metrics to {REPORTS_DIR}")
+    print(f"[OK] Saved feature engineered metrics to {REPORTS_DIR}")
 
 
 def main():
@@ -141,7 +154,7 @@ def main():
     print("Top 0.1% metrics:")
     for k, v in results["top_0_1pct"].items():
         print(f"{k}: {v}")
-
+    
     save_results(results)
 
 

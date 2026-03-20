@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
 from src.models.evaluate import top_k_metrics
+from src.features.build_features import build_features
 
 
 def load_data():
@@ -17,6 +18,9 @@ def load_data():
 
 def preprocess(df):
     df = df.drop_duplicates()
+    
+    df = build_features(df)
+    
     y = df[TARGET_COLUMN]
     X = df.drop(columns=[TARGET_COLUMN])
 
@@ -84,7 +88,7 @@ def evaluate_model(model, X_test, y_test):
 def save_results(results):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    path = REPORTS_DIR / "rf_metrics.json"
+    path = REPORTS_DIR / "rf_FE_metrics.json"
 
     with open(path, "w") as f:
         json.dump(results, f, indent=2)

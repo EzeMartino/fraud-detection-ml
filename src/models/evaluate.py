@@ -50,7 +50,7 @@ def save_threshold_metrics(metrics_df: pd.DataFrame, output_path: str) -> None:
     print(f"[OK] Saved threshold metrics to {output_path}")
 
 
-def save_top_k_metrics(metrics: dict, output_path: str) -> None:
+def save_top_k_metrics(results: dict, output_path: str) -> None:
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(results, f, indent=2)
     print(f"[OK] Saved top-k metrics to {output_path}")
