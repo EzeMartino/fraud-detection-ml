@@ -63,10 +63,6 @@ if __name__ == "__main__":
     sample_input = {
         "Time": 3500,
         "Amount": 100.0,
-        "amount_log":10,
-        "hour":23,
-        "is_night":True,
-        "amount_zscore":5,
         "V1":2,
         "V2":2,
         "V3":2,

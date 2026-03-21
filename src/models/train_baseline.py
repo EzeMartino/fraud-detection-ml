@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
 from src.models.evaluate import compute_threshold_metrics, save_threshold_metrics, save_top_k_metrics, top_k_metrics
-from src.features.build_features import build_features
+# from src.features.build_features import build_features didn't help in TopK
 
 
 def load_data() -> pd.DataFrame:
@@ -25,7 +25,7 @@ def load_data() -> pd.DataFrame:
 def preprocess(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     df = df.drop_duplicates()
     
-    df = build_features(df)
+#    df = build_features(df) didn't help in TopK
     
     y = df[TARGET_COLUMN]
     X = df.drop(columns=[TARGET_COLUMN])

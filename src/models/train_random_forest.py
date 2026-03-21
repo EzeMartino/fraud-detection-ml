@@ -9,17 +9,18 @@ from sklearn.model_selection import train_test_split
 
 from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
 from src.models.evaluate import top_k_metrics
-from src.features.build_features import build_features
+# from src.features.build_features import build_features didn't help in TopK
 
 
 def load_data():
     return pd.read_csv(DATA_FILE)
 
+config = {"n_estimators": 100, "max_depth": None, "min_samples_leaf": 1}
 
 def preprocess(df):
     df = df.drop_duplicates()
     
-    df = build_features(df)
+    # df = build_features(df) Didn't help in TopK
     
     y = df[TARGET_COLUMN]
     X = df.drop(columns=[TARGET_COLUMN])
@@ -109,7 +110,7 @@ def main():
     X_train, X_test, y_train, y_test = split_data(X, y)
 
     print("Training Random Forest...")
-    calibrated_model = train_model(X_train, y_train)
+    calibrated_model = train_model(X_train, y_train, config)
 
     print("Evaluating...")
     results = evaluate_model(calibrated_model, X_test, y_test)
