@@ -1,22 +1,32 @@
 # fraud-detection-ml
 
-End-to-end machine learning project for credit card fraud detection, focused on highly imbalanced classification, threshold optimization, explainability, and reproducible ML workflows.
+End-to-end machine learning system for fraud detection in highly imbalanced data (~0.17% fraud rate), optimized for operational decision-making using top-K precision instead of global metrics.
+
+**Key result:**
+The model is optimized to maximize fraud detection within a fixed investigation capacity using top-K precision.
+
+- Model: Calibrated Random Forest
+- Primary metric: Precision@K
+- Secondary metric: PR-AUC
+- Business focus: maximize fraud captured in top-ranked transactions
 
 
-## Project Goal
+## Business Problem
 
-Build a portfolio-ready fraud detection system that can:
+In fraud detection, reviewing every transaction is impossible.
 
-- profile and validate raw transaction data
-- train baseline and tree-based models
-- optimize decision thresholds under class imbalance
-- export reproducible artifacts
-- support batch inference and API deployment
+The goal is to rank transactions by risk so that:
+- The top X% can be reviewed by analysts
+- Fraud is captured efficiently with limited resources
+
+This project focuses on optimizing performance at the top of the ranking (Top-K), not overall accuracy.
 
 
 ## Dataset
 
-**Credit Card Fraud Detection Dataset**
+**Credit Card Fraud Detection Dataset (Kaggle)**
+- Transactions: 284,807
+- Fraud cases: 492 (~0.17%)
 
 This dataset contains anonymized credit card transactions and an extremely imbalanced binary target:
 
@@ -27,6 +37,86 @@ Main challenge:
 - extreme class imbalance
 - precision vs recall trade-off
 - operational threshold definition
+- features V1–V28 are PCA-transformed → no business interpretability
+
+Note: Time and Amount are the only non-transformed features.
+
+
+## Approach
+
+Pipeline:
+Raw Data
+↓
+Preprocessing
+↓
+Model Training (Logistic, Random Forest)
+↓
+Calibration (Isotonic)
+↓
+Top-K / Threshold Analysis
+↓
+Model Selection
+↓
+Artifact Export
+↓
+Inference API
+
+
+## Model Selection
+
+Final model: Calibrated Random Forest
+
+Why:
+- Significantly better performance in top-K segments (critical for fraud operations)
+- Calibration improved probability reliability for threshold-based decisions
+- Trade-off between performance and computational cost was acceptable
+
+Key decision:
+Model selection was driven by operational performance (top-K), not global metrics.
+
+Trade-off:
+Higher precision at top-K was prioritized over global recall to match operational constraints.
+
+
+## Evaluation
+
+Primary metric:
+- Precision@K (Top 1%, 0.5%, 0.2%)
+
+Secondary metrics:
+- PR-AUC (handles class imbalance)
+- ROC-AUC (ranking only)
+
+Key insight:
+ROC-AUC alone is insufficient for operational decisions in imbalanced datasets.
+In extremely imbalanced scenarios, a model can achieve high ROC-AUC while still generating unusable alert volumes due to low precision.
+
+
+## Results
+
+| Metric        | Value |
+|--------------|------|
+| ROC-AUC      | 0.97 |
+| PR-AUC       | 0.83 |
+| Precision@1% | ~14.29%  |
+| Recall@1%    | ~85.26%  |
+| Precision@0.5% | ~27.91%  |
+| Recall@0.5%    | ~83.16%  |
+| Precision@0.2% | ~69.03%  |
+| Recall@0.2%    | ~82.11%  |
+
+Results demonstrate that fraud is highly concentrated in the top-ranked transactions, enabling efficient allocation of investigation resources.
+
+
+## Calibration
+
+Random Forest probabilities were poorly calibrated.
+
+Isotonic calibration was applied to:
+- Improve probability reliability
+- Enable better threshold selection
+
+This is critical in risk-based decision systems because uncalibrated probabilities led to unreliable threshold decisions.
 
 
 ## Project Structure
@@ -43,34 +133,19 @@ sql/           complementary SQL practice
 ```
 
 
-## Initial Scope
+## Setup & Reproducibility
 
-Phase 1 of this project focuses on:
-- dataset setup
-- data profiling
-- reproducible baseline training
-- evaluation under severe class imbalance
-
-
-## Metrics
-
-Primary evaluation will emphasize:
-- PR-AUC
-- Precision@K
-- Recall@K
-- Threshold-based operational analysis
-
-Accuracy will be treated as a secondary reference only, since it is misleading under extreme imbalance.
-
-
-## Setup
+### Clone Repo
 
 ### Create virtual environment
-
+Windows:
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate
-pip install -r requirements.txt
+```
+Linux/Mac:
+```bash
+source .venv/bin/activate
 ```
 ### Install dependencies
 ```bash
@@ -79,6 +154,18 @@ pip install -r requirements.txt
 ### Run data profiling
 ```bash
 python -m src.data.load_and_profile
+```
+### Train:
+```bash
+python -m src.models.tune_random_forest
+```
+### Predict:
+```bash
+python src/predict.py
+```
+### Run API:
+```bash
+uvicorn src.api.main:app --reload
 ```
 ### Run tests
 ```bash
@@ -125,7 +212,7 @@ Example input:
     "V25":2,
     "V26":2,
     "V27":2,
-    "V28":2,
+    "V28":2
 }
 ```
 Output:
@@ -197,20 +284,19 @@ Example request body:
 - Features `V1` to `V28` are PCA-transformed and anonymized, so domain-based feature engineering and business interpretability are limited.
 - Additional engineered features based on `Amount` and `Time` were tested, but they did not improve top-k operational performance and were excluded from the final pipeline.
 - Model selection was driven primarily by operational metrics such as precision@k and recall@k, not only by aggregate metrics.
+- No concept drift handling
 
 
-## Roadmap
+## Future Work
+- Real feature engineering with temporal data
+- Online inference pipeline
+- Monitoring & drift detection
 
-Week 5: dataset setup + baseline
-
-Week 6: feature engineering
-
-Week 7: final model + explainability
-
-Week 8: packaging + deployment
 
 ## Status
-
-## Status
-
-Baseline modeling, threshold analysis, calibrated Random Forest selection, artifact export, local inference pipeline, and FastAPI service are complete.
+Project is production-ready at prototype level:
+- Reproducible training pipeline
+- Exported artifacts
+- Inference script
+- API with validation
+- Automated tests
