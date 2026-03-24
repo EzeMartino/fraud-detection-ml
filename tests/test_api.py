@@ -25,8 +25,9 @@ def test_predict_endpoint():
         **{f"V{i}": 0.0 for i in range(1, 29)},
         "threshold": 0.5,
     }
-
-    response = client.post("/predict", json=payload)
+    
+    with TestClient(app) as client:
+        response = client.post("/predict", json=payload)
 
     assert response.status_code == 200
     body = response.json()
