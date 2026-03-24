@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
 import json
 
+import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.calibration import calibration_curve, CalibratedClassifierCV
@@ -7,15 +9,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from src.config import DATA_FILE, REPORTS_DIR, TARGET_COLUMN
+from src.config import CONFIG_FILENAME, DATA_FILE, LATEST_FILE, METADATA_FILENAME, MODELS_DIR, PIPELINE_FILENAME, REPORTS_DIR, TARGET_COLUMN, THRESHOLD, get_best_config_path
 from src.models.evaluate import top_k_metrics
+from src.utils.versioning import compute_model_version
 # from src.features.build_features import build_features didn't help in TopK
 
 
 def load_data():
     return pd.read_csv(DATA_FILE)
-
-config = {"n_estimators": 100, "max_depth": None, "min_samples_leaf": 1}
 
 def preprocess(df):
     df = df.drop_duplicates()
@@ -80,10 +81,12 @@ def evaluate_model(model, X_test, y_test, save_plot=True, plot_name="calibration
     return {
         "pr_auc": average_precision_score(y_test, y_proba),
         "roc_auc": roc_auc_score(y_test, y_proba),
-        "top_1pct": top_k_metrics(y_test, y_proba, 0.01),
-        "top_0_5pct": top_k_metrics(y_test, y_proba, 0.005),
-        "top_0_2pct": top_k_metrics(y_test, y_proba, 0.002),
-        "top_0_1pct": top_k_metrics(y_test, y_proba, 0.001),
+        "top_k_performance":{
+            "top_1pct": top_k_metrics(y_test, y_proba, 0.01),
+            "top_0_5pct": top_k_metrics(y_test, y_proba, 0.005),
+            "top_0_2pct": top_k_metrics(y_test, y_proba, 0.002),
+            "top_0_1pct": top_k_metrics(y_test, y_proba, 0.001),
+        },
         "brier_score": brier,
     }
 
@@ -100,27 +103,74 @@ def save_results(results, custom_path="rf_metrics.json"):
 
 
 def main():
-    print("Loading data...")
     df = load_data()
 
-    print("Preprocessing...")
     X, y = preprocess(df)
 
-    print("Splitting...")
     X_train, X_test, y_train, y_test = split_data(X, y)
 
-    print("Training Random Forest...")
-    calibrated_model = train_model(X_train, y_train, config)
+    config_path = get_best_config_path()
+    if not config_path.exists():
+        raise FileNotFoundError(f"{CONFIG_FILENAME} not found. Run tune_random_forest.py to get best config")
+    
+    with config_path.open("r", encoding="utf-8") as f:
+            best_config = json.load(f)
+    
+    calibrated_model = train_model(X_train, y_train, best_config)
 
-    print("Evaluating...")
     results = evaluate_model(calibrated_model, X_test, y_test)
-
-    print("\nResults:")
-    for k, v in results.items():
-        print(k, ":", v)
 
     save_results(results)
 
+    # Export model
+    # Save best model
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    staging_dir = MODELS_DIR / "_staging"
+    staging_dir.mkdir(exist_ok=True)
+    
+    pipeline_path = staging_dir / PIPELINE_FILENAME
+    joblib.dump(calibrated_model, pipeline_path)
+        
+    # Save metadata
+    metadata = {
+        "model_version": None,  # Placeholder, will be updated after computing the version
+        "model_type": "RandomForestClassifier",
+        "training_timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "dataset_name": "Credit Card Fraud Detection (Kaggle)",
+        "exported_model_name": PIPELINE_FILENAME,
+        "target_column": TARGET_COLUMN,
+        "positive_class_rate": float(y_train.mean()),
+        "feature_count": X.shape[1],
+        "features_used": list(X.columns),
+        "train_rows": int(len(X_train)),
+        "test_rows": int(len(X_test)),
+        "default_threshold": THRESHOLD,
+        "calibrated": True,
+        "calibration_method": "isotonic",
+        "selected_metric": "precision_at_0_2pct",
+        "selection_criteria": "Best operational performance with lowest computational cost among tied configs",
+        "metrics": results,
+    }
+    metadata_path = staging_dir / METADATA_FILENAME
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+        
+    model_version = compute_model_version(pipeline_path, metadata_path)
+    metadata["model_version"] = model_version
+    
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+        
+    final_model_dir = MODELS_DIR / f"model_{model_version}"
+    
+    if final_model_dir.exists():
+        raise FileExistsError(f"Model directory already exists: {final_model_dir}")
+
+    staging_dir.rename(final_model_dir)
+    
+    LATEST_FILE.write_text(final_model_dir.name, encoding="utf-8")
+    
+    print(f"[OK] Saved model and metadata to {final_model_dir}")
 
 if __name__ == "__main__":
     main()
