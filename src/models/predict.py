@@ -1,32 +1,9 @@
-import joblib
 import json
 
+import joblib
 import pandas as pd
 
-from src.config import MODELS_DIR
-
-MODEL_PATH = MODELS_DIR / "rf_tuned_model.joblib"
-METADATA_PATH = MODELS_DIR / "rf_tuned_metadata.json"
-
-
-def load_model():
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(
-            f"Model artifact not found at {MODEL_PATH}. "
-            "Run 'tune_random_forest.py and export artifacts first"
-        )
-        
-    return joblib.load(MODEL_PATH)
-
-def load_metadata():
-    if not METADATA_PATH.exists():
-        raise FileNotFoundError(
-            f"Model artifact not found at {METADATA_PATH}. "
-            "Run 'tune_random_forest.py and export artifacts first"
-        )
-        
-    with open(METADATA_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+from src.config import get_active_metadata_path, get_active_pipeline_path
     
 def prepare_input(data: dict, features_used: list[str]) -> pd.DataFrame:
     df = pd.DataFrame([data])
@@ -42,21 +19,20 @@ def prepare_input(data: dict, features_used: list[str]) -> pd.DataFrame:
     
     return df[features_used]
 
-def predict_single(data: dict, threshold: float = 0.5) -> dict:
-    model = load_model()
-    metadata = load_metadata()
+def predict_single(data: dict, metadata, pipeline, threshold: float = 0.5) -> dict:
     
     features_used = metadata["features_used"]
     X = prepare_input(data, features_used)
     
-    fraud_score = float(model.predict_proba(X)[:, 1][0])
+    fraud_score = float(pipeline.predict_proba(X)[:, 1][0])
     
     predicted_class = int(fraud_score >= threshold)
     
     return {
         "fraud_score": fraud_score,
         "predicted_class": predicted_class,
-        "threshold": threshold
+        "threshold": threshold,
+        "model_version": metadata["model_version"]
     }
     
 if __name__ == "__main__":
@@ -93,5 +69,23 @@ if __name__ == "__main__":
         "V28":2,
     }
 
-    result = predict_single(sample_input)
+    metadata_path = get_active_metadata_path()
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Model artifact not found at {metadata_path}. "
+            "Run 'train_random_forest.py' to generate model artifacts first"
+        )
+        
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    
+    pipeline_path = get_active_pipeline_path()
+    if not pipeline_path.exists():
+        raise FileNotFoundError(
+            f"Model artifact not found at {pipeline_path}. "
+            "Run 'train_random_forest.py' to generate model artifacts first"
+        )
+    pipeline = joblib.load(pipeline_path)
+    
+    result = predict_single(sample_input, metadata, pipeline)
     print(result)
