@@ -7,6 +7,7 @@ The model is optimized to maximize fraud detection within a fixed investigation 
 
 - Model: Calibrated Random Forest
 - Primary metric: Precision@K
+- Model Selection Metric: precision_at_0_2pct
 - Secondary metric: PR-AUC
 - Business focus: maximize fraud captured in top-ranked transactions
 
@@ -155,9 +156,13 @@ pip install -r requirements.txt
 ```bash
 python -m src.data.load_and_profile
 ```
-### Train:
+### Get best config:
 ```bash
 python -m src.models.tune_random_forest
+```
+### Train
+```bash
+python -m src.models.train_random_forest
 ```
 ### Predict:
 ```bash
@@ -220,7 +225,8 @@ Output:
 {
     "fraud_score": 0.009379329174404236, 
     "predicted_class": 0, 
-    "threshold": 0.5
+    "threshold": 0.5,
+    "model_version": "2d0b2262b407"
 }
 ```
 
