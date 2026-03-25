@@ -1,0 +1,84 @@
+{
+  "model_version": "2d0b2262b407",
+  "model_type": "RandomForestClassifier",
+  "training_timestamp_utc": "2026-03-24T15:11:18.701548+00:00",
+  "dataset_name": "Credit Card Fraud Detection (Kaggle)",
+  "exported_model_name": "model.joblib",
+  "target_column": "Class",
+  "positive_class_rate": 0.0016653449643140364,
+  "feature_count": 30,
+  "features_used": [
+    "Time",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+    "V17",
+    "V18",
+    "V19",
+    "V20",
+    "V21",
+    "V22",
+    "V23",
+    "V24",
+    "V25",
+    "V26",
+    "V27",
+    "V28",
+    "Amount"
+  ],
+  "train_rows": 226980,
+  "test_rows": 56746,
+  "default_threshold": 0.5,
+  "calibrated": true,
+  "calibration_method": "isotonic",
+  "selected_metric": "precision_at_0_2pct",
+  "selection_criteria": "Best operational performance with lowest computational cost among tied configs",
+  "metrics": {
+    "pr_auc": 0.8078499420300959,
+    "roc_auc": 0.9386899845684892,
+    "top_k_performance": {
+      "top_1pct": {
+        "top_fraction": 0.01,
+        "k": 567,
+        "true_positives_in_top_k": 81,
+        "precision_at_k": 0.14285714285714285,
+        "recall_at_k": 0.8526315789473684
+      },
+      "top_0_5pct": {
+        "top_fraction": 0.005,
+        "k": 283,
+        "true_positives_in_top_k": 79,
+        "precision_at_k": 0.2791519434628975,
+        "recall_at_k": 0.8315789473684211
+      },
+      "top_0_2pct": {
+        "top_fraction": 0.002,
+        "k": 113,
+        "true_positives_in_top_k": 78,
+        "precision_at_k": 0.6902654867256637,
+        "recall_at_k": 0.8210526315789474
+      },
+      "top_0_1pct": {
+        "top_fraction": 0.001,
+        "k": 56,
+        "true_positives_in_top_k": 55,
+        "precision_at_k": 0.9821428571428571,
+        "recall_at_k": 0.5789473684210527
+      }
+    },
+    "brier_score": 0.0004491035028603344
+  }
+}

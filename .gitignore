@@ -10,6 +10,9 @@ data/raw/*
 
 models/*
 !models/.gitkeep
+!models/latest.txt
+!models/model_2d0b2262b407/
+!models/model_2d0b2262b407/**
 
 artifacts/*
 !artifacts/.gitkeep
