@@ -1,6 +1,13 @@
+![CI](https://github.com/EzeMartino/fraud-detection-ml/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
+![Status](https://img.shields.io/badge/status-deployed-green)
+![API](https://img.shields.io/badge/api-live-green)
+![Render](https://img.shields.io/badge/deploy-render-blue)
+
 # fraud-detection-ml
 
-End-to-end machine learning system for fraud detection in highly imbalanced data (~0.17% fraud rate), optimized for operational decision-making using top-K precision instead of global metrics.
+End-to-end machine learning system for fraud detection in highly imbalanced data (~0.17% fraud rate), designed to optimize operational decision-making under investigation capacity constraints using top-K precision.
 
 **Key result:**
 The model is optimized to maximize fraud detection within a fixed investigation capacity using top-K precision.
@@ -43,9 +50,8 @@ Main challenge:
 Note: Time and Amount are the only non-transformed features.
 
 
-## Approach
-
-Pipeline:
+## Architecture:
+```
 Raw Data
 ↓
 Preprocessing
@@ -60,7 +66,12 @@ Model Selection
 ↓
 Artifact Export
 ↓
-Inference API
+Inference API (FastAPI)
+↓
+Docker
+↓
+Render
+```
 
 
 ## Model Selection
@@ -166,7 +177,7 @@ python -m src.models.train_random_forest
 ```
 ### Predict:
 ```bash
-python src/predict.py
+python -m src.models.predict.py
 ```
 ### Run API:
 ```bash
@@ -176,6 +187,15 @@ uvicorn src.api.main:app --reload
 ```bash
 pytest
 ```
+
+
+## System Design
+
+- Model artifacts are versioned using a hash-based strategy
+- The active model is resolved dynamically via latest.txt
+- The API loads artifacts at startup using FastAPI lifespan
+- Input validation is enforced using Pydantic
+- The service is containerized with Docker for reproducibility
 
 
 ## Inference
@@ -285,6 +305,107 @@ Example request body:
 ```
 
 
+## Docker Deployment
+
+The API can be executed inside a Docker container.
+
+This ensures the service runs with identical dependencies across environments.
+
+### Build image
+```bash
+docker build -t fraud-detection-api .
+```
+
+### Run container
+```bash
+docker run --rm -p 8000:8000 fraud-detection-api
+```
+
+### Dockerized Architecture
+
+The service includes a minimal runtime dependency set.
+
+Runtime dependencies are separated from development dependencies:
+- requirements.txt → runtime environment
+- requirements.dev.txt → development tools (pytest, notebooks, etc.)
+
+This reduces container size and avoids OS-specific packages such as pywinpty.
+
+
+## 🚀 Live Demo
+
+Try the API:
+
+- Health check: https://fraud-detection-ml-6lsn.onrender.com/health
+- Interactive docs: https://fraud-detection-ml-6lsn.onrender.com/docs
+
+Base URL:
+https://fraud-detection-ml-6lsn.onrender.com/
+
+Endpoints:
+- /health
+- /predict
+- /docs
+
+Example predict request body:
+```json
+{
+  "Time": 0,
+  "Amount": 100.0,
+  "V1": 0.0,
+  "V2": 0.0,
+  "V3": 0.0,
+  "V4": 0.0,
+  "V5": 0.0,
+  "V6": 0.0,
+  "V7": 0.0,
+  "V8": 0.0,
+  "V9": 0.0,
+  "V10": 0.0,
+  "V11": 0.0,
+  "V12": 0.0,
+  "V13": 0.0,
+  "V14": 0.0,
+  "V15": 0.0,
+  "V16": 0.0,
+  "V17": 0.0,
+  "V18": 0.0,
+  "V19": 0.0,
+  "V20": 0.0,
+  "V21": 0.0,
+  "V22": 0.0,
+  "V23": 0.0,
+  "V24": 0.0,
+  "V25": 0.0,
+  "V26": 0.0,
+  "V27": 0.0,
+  "V28": 0.0,
+  "threshold": 0.5
+}
+```
+
+Output:
+```json
+{
+    "fraud_score": 0.009379329174404236, 
+    "predicted_class": 0, 
+    "threshold": 0.5,
+    "model_version": "2d0b2262b407"
+}
+```
+
+## Continuous Integration
+
+The repository includes a Github Actions pipeline that:
+
+1. Installs dependencies
+2. Runs tests
+3. Runs /predict endpoint
+
+I kept CI focused on code quality and reproducibility checks, not on full retraining.
+Training and model selection are heavier workflows and are better triggered manually or in dedicated pipelines, while CI should stay fast and reliable.
+
+
 ## Notes and Limitations
 
 - Features `V1` to `V28` are PCA-transformed and anonymized, so domain-based feature engineering and business interpretability are limited.
@@ -300,9 +421,10 @@ Example request body:
 
 
 ## Status
-Project is production-ready at prototype level:
-- Reproducible training pipeline
-- Exported artifacts
-- Inference script
-- API with validation
+Production-ready prototype:
+- End-to-end reproducible pipeline
+- Versioned model artifacts
+- FastAPI inference service
+- Dockerized deployment
+- Public API endpoint
 - Automated tests
