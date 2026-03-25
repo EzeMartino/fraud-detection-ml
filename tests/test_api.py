@@ -13,9 +13,15 @@ def test_root_endpoint():
 
 
 def test_health_endpoint():
-    response = client.get("/health")
+    with TestClient(app) as client:
+        response = client.get("/health")
+        
+    data = response.json()
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert "model_loaded" in data
+    assert "model_version" in data
+    assert data["model_loaded"] is True
 
 
 def test_predict_endpoint():
